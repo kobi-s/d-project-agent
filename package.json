@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "agent.js",
   "scripts": {
+    "start": "node agent.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
