@@ -8,9 +8,9 @@ const { spawn } = require('child_process');
 
 class ProcessManager {
     constructor() {
-        this.processes = new Map(); // Store running processes
+        this.processes = new Map(); 
+        this.outputBuffer = new Map(); 
     }
-
     startProcess(processId, command, args = []) {
         if (this.processes.has(processId)) {
             throw new Error(`Process ${processId} is already running`);
@@ -23,6 +23,9 @@ class ProcessManager {
             stdio: ['pipe', 'pipe', 'pipe'],
             shell: true
         });
+    
+        // Initialize output buffer for this process
+        this.outputBuffer.set(processId, []);
     
         // Store process information
         this.processes.set(processId, {
@@ -39,12 +42,9 @@ class ProcessManager {
             const output = data.toString().trim();
             if (output) {
                 console.log(`[${processId}] ${output}`);
-                // Store output in history (limit to last 1000 lines)
-                const processInfo = this.processes.get(processId);
-                processInfo.output.push(output);
-                if (processInfo.output.length > 1000) {
-                    processInfo.output.shift();
-                }
+                // Add to buffer instead of directly to process output
+                const buffer = this.outputBuffer.get(processId);
+                buffer.push(output);
             }
         });
     
@@ -54,8 +54,8 @@ class ProcessManager {
             const error = data.toString().trim();
             if (error) {
                 console.error(`[${processId}] Error: ${error}`);
-                const processInfo = this.processes.get(processId);
-                processInfo.output.push(`ERROR: ${error}`);
+                const buffer = this.outputBuffer.get(processId);
+                buffer.push(`ERROR: ${error}`);
             }
         });
     
@@ -75,6 +75,7 @@ class ProcessManager {
             message: 'Process started successfully'
         };
     }
+
     stopProcess(processId) {
         const processInfo = this.processes.get(processId);
         if (!processInfo) {
@@ -102,13 +103,25 @@ class ProcessManager {
     getAllProcessOutputs() {
         const outputs = {};
         for (const [processId, info] of this.processes) {
+            const bufferedOutput = this.outputBuffer.get(processId) || [];
+            
+            info.output = [...info.output, ...bufferedOutput];
+            
+            // Keep only last 1000 lines in history
+            if (info.output.length > 1000) {
+                info.output = info.output.slice(info.output.length - 1000);
+            }
+            
             outputs[processId] = {
-                output: info.output,
+                output: bufferedOutput, // Send only new output since last update
                 isRunning: info.isRunning,
                 exitCode: info.exitCode,
                 command: info.command,
                 startTime: info.startTime
             };
+            
+            // Clear buffer after adding to outputs
+            this.outputBuffer.set(processId, []);
         }
         return outputs;
     }
@@ -246,12 +259,6 @@ class InstanceAgent {
             });
     
             console.log('Successfully updated metrics and process outputs:', response.data);
-            
-            // Clear the outputs after sending them
-            for (const [processId, info] of this.processManager.processes) {
-                info.output = [];
-            }
-            
             return response.data;
         } catch (error) {
             console.error('Failed to update metrics and process outputs:', error.message);
