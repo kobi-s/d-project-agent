@@ -72,7 +72,7 @@ class ProcessManager {
             message: 'Process started successfully'
         };
     }
-    
+
     stopProcess(processId) {
         const processInfo = this.processes.get(processId);
         if (!processInfo) {
@@ -213,6 +213,10 @@ class InstanceAgent {
                 });
             }
         });
+
+        this.app.get('/health', (req, res) => {
+            return res.sendStatus(200)
+        })
     }
 
     getOrCreateInstanceId() {
