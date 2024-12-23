@@ -15,30 +15,27 @@ class ProcessManager {
         if (this.processes.has(processId)) {
             throw new Error(`Process ${processId} is already running`);
         }
-
-        // Ensure we're running a Python command
-        const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
         
         // Build the full command with proper arguments
         const fullCommand = [command, ...args].join(' ');
         
-        const pythonProcess = spawn(pythonCommand, ['-u', '-c', fullCommand], {
+        const childProcess = spawn(command, args, {
             stdio: ['pipe', 'pipe', 'pipe'],
-            env: { ...process.env, PYTHONUNBUFFERED: '1' }
+            shell: true
         });
-
+    
         // Store process information
         this.processes.set(processId, {
-            process: pythonProcess,
+            process: childProcess,
             startTime: new Date(),
             command: fullCommand,
             output: [],  // Store output history
             isRunning: true
         });
-
+    
         // Handle stdout with proper encoding and buffer handling
-        pythonProcess.stdout.setEncoding('utf8');
-        pythonProcess.stdout.on('data', (data) => {
+        childProcess.stdout.setEncoding('utf8');
+        childProcess.stdout.on('data', (data) => {
             const output = data.toString().trim();
             if (output) {
                 console.log(`[${processId}] ${output}`);
@@ -50,10 +47,10 @@ class ProcessManager {
                 }
             }
         });
-
+    
         // Handle stderr
-        pythonProcess.stderr.setEncoding('utf8');
-        pythonProcess.stderr.on('data', (data) => {
+        childProcess.stderr.setEncoding('utf8');
+        childProcess.stderr.on('data', (data) => {
             const error = data.toString().trim();
             if (error) {
                 console.error(`[${processId}] Error: ${error}`);
@@ -61,24 +58,23 @@ class ProcessManager {
                 processInfo.output.push(`ERROR: ${error}`);
             }
         });
-
+    
         // Handle process completion
-        pythonProcess.on('close', (code) => {
-            console.log(`[${processId}] Python process exited with code ${code}`);
+        childProcess.on('close', (code) => {
+            console.log(`[${processId}] Process exited with code ${code}`);
             const processInfo = this.processes.get(processId);
             if (processInfo) {
                 processInfo.isRunning = false;
                 processInfo.exitCode = code;
             }
         });
-
+    
         return { 
             processId, 
             status: 'started',
-            message: 'Python process started successfully'
+            message: 'Process started successfully'
         };
     }
-
     stopProcess(processId) {
         const processInfo = this.processes.get(processId);
         if (!processInfo) {
@@ -101,6 +97,20 @@ class ProcessManager {
             startTime: processInfo.startTime,
             command: processInfo.command
         };
+    }
+
+    getAllProcessOutputs() {
+        const outputs = {};
+        for (const [processId, info] of this.processes) {
+            outputs[processId] = {
+                output: info.output,
+                isRunning: info.isRunning,
+                exitCode: info.exitCode,
+                command: info.command,
+                startTime: info.startTime
+            };
+        }
+        return outputs;
     }
 
     getAllProcesses() {
@@ -227,16 +237,24 @@ class InstanceAgent {
 
     async updateMetrics(rps, gps) {
         try {
+            const processOutputs = this.processManager.getAllProcessOutputs();
             const response = await axios.post(`${this.serverUrl}/update`, {
                 instanceId: this.instanceId,
                 rps,
-                gps
+                gps,
+                processes: processOutputs
             });
-
-            console.log('Successfully updated metrics:', response.data);
+    
+            console.log('Successfully updated metrics and process outputs:', response.data);
+            
+            // Clear the outputs after sending them
+            for (const [processId, info] of this.processManager.processes) {
+                info.output = [];
+            }
+            
             return response.data;
         } catch (error) {
-            console.error('Failed to update metrics:', error.message);
+            console.error('Failed to update metrics and process outputs:', error.message);
             throw error;
         }
     }
@@ -266,22 +284,22 @@ class InstanceAgent {
             this.app.listen(this.port, () => {
                 console.log(`Agent command endpoint listening on port ${this.port}`);
             });
-
+    
             // Initial connection to main server
             await this.connect();
             
             // Setup cleanup handlers
             this.setupCleanup();
-
+    
             console.log('Agent running with instance ID:', this.instanceId);
-
-            // Example: Update metrics every minute
+    
+            // Update metrics and process outputs every 10 seconds
             setInterval(async () => {
                 const rps = Math.floor(Math.random() * 100);
                 const gps = Math.floor(Math.random() * 50);
                 await this.updateMetrics(rps, gps);
-            }, 60000);
-
+            }, 10000); // Changed from 60000 to 10000
+    
         } catch (error) {
             console.error('Error running agent:', error);
             process.exit(1);
