@@ -11,23 +11,23 @@ class ProcessManager {
         this.processes = new Map(); 
         this.outputBuffer = new Map(); 
     }
+
     startProcess(processId, command, args = []) {
         if (this.processes.has(processId)) {
             throw new Error(`Process ${processId} is already running`);
         }
-        
-        // Build the full command with proper arguments
+            
+        // Build the full command
         const fullCommand = [command, ...args].join(' ');
         
-        const childProcess = spawn(command, args, {
-            stdio: ['pipe', 'pipe', 'pipe'],
-            shell: true
+        // Use bash explicitly to run the command
+        const childProcess = spawn('/bin/bash', ['-c', fullCommand], {
+            stdio: ['pipe', 'pipe', 'pipe']
         });
     
         // Initialize output buffer for this process
         this.outputBuffer.set(processId, []);
     
-        // Store process information
         this.processes.set(processId, {
             process: childProcess,
             startTime: new Date(),
@@ -36,19 +36,17 @@ class ProcessManager {
             isRunning: true
         });
     
-        // Handle stdout with proper encoding and buffer handling
+        // Rest of the function remains the same...
         childProcess.stdout.setEncoding('utf8');
         childProcess.stdout.on('data', (data) => {
             const output = data.toString().trim();
             if (output) {
                 console.log(`[${processId}] ${output}`);
-                // Add to buffer instead of directly to process output
                 const buffer = this.outputBuffer.get(processId);
                 buffer.push(output);
             }
         });
     
-        // Handle stderr
         childProcess.stderr.setEncoding('utf8');
         childProcess.stderr.on('data', (data) => {
             const error = data.toString().trim();
@@ -59,7 +57,6 @@ class ProcessManager {
             }
         });
     
-        // Handle process completion
         childProcess.on('close', (code) => {
             console.log(`[${processId}] Process exited with code ${code}`);
             const processInfo = this.processes.get(processId);
@@ -75,7 +72,7 @@ class ProcessManager {
             message: 'Process started successfully'
         };
     }
-
+    
     stopProcess(processId) {
         const processInfo = this.processes.get(processId);
         if (!processInfo) {
