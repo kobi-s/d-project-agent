@@ -213,7 +213,8 @@ class InstanceAgent {
     async connect() {
         try {
             const response = await axios.post(`${this.serverUrl}/connect`, {
-                instanceId: this.instanceId
+                instanceId: this.instanceId,
+                region: process.env.SERVER_REGION || 'unknown'
             });
 
             console.log('Successfully connected to server:', response.data);
