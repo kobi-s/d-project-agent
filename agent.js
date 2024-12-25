@@ -302,11 +302,11 @@ class InstanceAgent {
             console.log('Agent running with instance ID:', this.instanceId);
     
             // Update metrics and process outputs every 10 seconds
-            setInterval(async () => {
-                const rps = Math.floor(Math.random() * 100);
-                const gps = Math.floor(Math.random() * 50);
-                await this.updateMetrics(rps, gps);
-            }, 10000); // Changed from 60000 to 10000
+            // setInterval(async () => {
+            //     const rps = Math.floor(Math.random() * 100);
+            //     const gps = Math.floor(Math.random() * 50);
+            //     await this.updateMetrics(rps, gps);
+            // }, 10000);
     
         } catch (error) {
             console.error('Error running agent:', error);
