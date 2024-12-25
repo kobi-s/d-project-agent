@@ -8,15 +8,17 @@ const { spawn } = require('child_process');
 
 class ProcessManager {
     constructor() {
+        this.campaign = null; 
         this.processes = new Map(); 
         this.outputBuffer = new Map(); 
     }
 
-    startProcess(processId, command, args = []) {
+    startProcess(processId, command, args = [], campaign) {
         if (this.processes.has(processId)) {
             throw new Error(`Process ${processId} is already running`);
         }
             
+        this.campaign = campaign;
         // Build the full command
         const fullCommand = [command, ...args].join(' ');
         
@@ -81,6 +83,7 @@ class ProcessManager {
 
         processInfo.process.kill();
         this.processes.delete(processId);
+        this.campaign = null;
         return { processId, status: 'stopped' };
     }
 
@@ -153,7 +156,7 @@ class InstanceAgent {
 
         // Command endpoint to start/stop processes
         this.app.post('/command', (req, res) => {
-            const { action, processId, command, args } = req.body;
+            const { action, processId, command, args, campaign } = req.body;
 
             try {
                 switch (action) {
@@ -164,7 +167,7 @@ class InstanceAgent {
                                 message: 'processId and command are required'
                             });
                         }
-                        const result = this.processManager.startProcess(processId, command, args);
+                        const result = this.processManager.startProcess(processId, command, args, campaign);
                         res.json({ status: 'success', ...result });
                         break;
 
