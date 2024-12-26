@@ -255,13 +255,11 @@ class InstanceAgent {
         }
     }
 
-    async updateMetrics(rps, gps) {
+    async updateMetrics() {
         try {
             const processOutputs = this.processManager.getAllProcessOutputs();
             const response = await axios.post(`${this.serverUrl}/update`, {
                 instanceId: this.instanceId,
-                rps,
-                gps,
                 processes: processOutputs,
                 campaign: this.processManager.campaign
             });
@@ -309,11 +307,11 @@ class InstanceAgent {
             console.log('Agent running with instance ID:', this.instanceId);
     
             // Update metrics and process outputs every 10 seconds
-            // setInterval(async () => {
-            //     const rps = Math.floor(Math.random() * 100);
-            //     const gps = Math.floor(Math.random() * 50);
-            //     await this.updateMetrics(rps, gps);
-            // }, 10000);
+            setInterval(async () => {
+                // const rps = Math.floor(Math.random() * 100);
+                // const gps = Math.floor(Math.random() * 50);
+                await this.updateMetrics();
+            }, 10000);
     
         } catch (error) {
             console.error('Error running agent:', error);
