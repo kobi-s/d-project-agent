@@ -167,7 +167,10 @@ class InstanceAgent {
                                 message: 'processId and command are required'
                             });
                         }
+                        
                         const result = this.processManager.startProcess(processId, command, args, campaign);
+                        this.processManager.campaign = campaign;
+
                         res.json({ status: 'success', ...result });
                         break;
 
@@ -259,7 +262,8 @@ class InstanceAgent {
                 instanceId: this.instanceId,
                 rps,
                 gps,
-                processes: processOutputs
+                processes: processOutputs,
+                campaign: this.processManager.campaign
             });
     
             console.log('Successfully updated metrics and process outputs:', response.data);
