@@ -310,7 +310,9 @@ class InstanceAgent {
             setInterval(async () => {
                 // const rps = Math.floor(Math.random() * 100);
                 // const gps = Math.floor(Math.random() * 50);
-                await this.updateMetrics();
+                if(this.processManager.campaign) {
+                    await this.updateMetrics();
+                }
             }, 10000);
     
         } catch (error) {
